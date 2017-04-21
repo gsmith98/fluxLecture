@@ -5,14 +5,19 @@ import { Dispatcher } from 'flux';
 import { EventEmitter } from 'events';
 
 
+const times = ['9', '10', '11', '12', '1', '2', '3', '4'];
+
+
 var AppDispatcher = new Dispatcher();
 
-var busyStore =  Object.assign({}, EventEmitter.prototype, { busy: false });
+var busyStore =  Object.assign({}, EventEmitter.prototype, {
+  busy: Array(times.length).fill(false)
+});
 
 AppDispatcher.register( function( payload ) {
     switch( payload.actionName ) {
         case 'toggle':
-            busyStore.busy = !busyStore.busy;
+            busyStore.busy[payload.slotnum] = !busyStore.busy[payload.slotnum];
             busyStore.emit('change')
     }
 });
@@ -27,7 +32,7 @@ class TimeSlot extends Component {
   }
 
   localUpdate() {
-    this.setState({ busy: busyStore.busy })
+    this.setState({ busy: busyStore.busy[this.props.slotnum] })
   }
 
   componentDidMount() {
@@ -40,14 +45,15 @@ class TimeSlot extends Component {
 
   clickSlot() {
     AppDispatcher.dispatch({
-        actionName: 'toggle'
+        actionName: 'toggle',
+        slotnum: this.props.slotnum
     });
   }
 
   render() {
     return (
       <div
-        onClick={this.clickSlot}
+        onClick={() => this.clickSlot()}
         style={{ backgroundColor: (this.state.busy ? 'red' : 'green')}}
       >
         YO
@@ -57,7 +63,22 @@ class TimeSlot extends Component {
 }
 
 
+class Day extends Component {
+  render() {
+    return (
+      <div>
+        {times.map((time, index) => (
+          <div key={time}>
+            <div>{time}</div>
+            <TimeSlot slotnum={index}/>
+          </div>
+        ))}
+      </div>
+    );
+  }
+}
+
 render(
-  <TimeSlot />,
+  <Day />,
   document.getElementById('root')
 );
