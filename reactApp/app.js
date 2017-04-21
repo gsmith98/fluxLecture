@@ -11,15 +11,19 @@ const times = ['9', '10', '11', '12', '1', '2', '3', '4'];
 
 var AppDispatcher = new Dispatcher();
 
-var busyStore =  Object.assign({}, EventEmitter.prototype, {
-  busy: Array(times.length).fill(false)
+var SlotsStore =  Object.assign({}, EventEmitter.prototype, {
+  busy: Array(times.length).fill(false),
+  name: Array(times.length).fill(null),
+  number: Array(times.length).fill(null)
 });
 
 AppDispatcher.register( function( payload ) {
     switch( payload.actionName ) {
-        case 'toggle':
-            busyStore.busy[payload.slotnum] = !busyStore.busy[payload.slotnum];
-            busyStore.emit('change')
+        case 'reserve':
+            SlotsStore.busy[payload.slotnum] = true;
+            SlotsStore.name[payload.slotnum] = payload.name;
+            SlotsStore.number[payload.slotnum] = payload.number;
+            SlotsStore.emit('change')
     }
 });
 
@@ -28,16 +32,20 @@ class TimeSlot extends Component {
   constructor(props) {
     super(props);
 
-    this.state = { busy: false, modalOpen: false }
+    this.state = { busy: false, name: null, number: null, modalOpen: false }
     this.localUpdate = this.localUpdate.bind(this);
   }
 
   localUpdate() {
-    this.setState({ busy: busyStore.busy[this.props.slotnum] })
+    this.setState({
+      busy: SlotsStore.busy[this.props.slotnum],
+      name: SlotsStore.name[this.props.slotnum],
+      number: SlotsStore.number[this.props.slotnum]
+    })
   }
 
   componentDidMount() {
-    busyStore.on('change', this.localUpdate);
+    SlotsStore.on('change', this.localUpdate);
   }
 
   componentWillUnmount() {
@@ -45,10 +53,16 @@ class TimeSlot extends Component {
   }
 
   submitModal() {
+    var name = this.nameField.value.trim();
+    var number = this.numField.value.trim();
+
     AppDispatcher.dispatch({
-        actionName: 'toggle',
-        slotnum: this.props.slotnum
+        actionName: 'reserve',
+        slotnum: this.props.slotnum,
+        name,
+        number
     });
+
     this.setState({ modalOpen: false });
   }
 
@@ -64,6 +78,8 @@ class TimeSlot extends Component {
           onRequestClose={() => this.setState({modalOpen: false})}
           contentLabel="Modal"
         >
+          <input type="text" ref={(node) => { this.nameField = node; }} placeholder="Name" defaultValue={this.state.name}/>
+          <input type="text" ref={(node) => { this.numField = node; }} placeholder="Phone #" defaultValue={this.state.number}/>
           <button onClick={() => this.submitModal()}>Save</button>
           <button onClick={() => this.setState({modalOpen: false})}>Cancel</button>
         </Modal>
@@ -71,7 +87,7 @@ class TimeSlot extends Component {
           onClick={() => this.clickSlot()}
           style={{ backgroundColor: (this.state.busy ? 'red' : 'green')}}
         >
-          YO
+          {this.state.busy ? `${this.state.name}  --  ${this.state.number}` : 'Open'}
         </div>
       </div>
     );
